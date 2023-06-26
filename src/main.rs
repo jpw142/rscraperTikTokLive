@@ -24,8 +24,9 @@ use tokio::{self, time::sleep};
     caps.set_debugger_address("localhost:9222")?;
     let d = WebDriver::new("http://localhost:9515", caps).await?;
     
-    // Go to tik tok
+    // Go to tik tok live page
     d.goto(url).await?;
+
     // Checks if the login screen comes up
     let login = d.find(By::Css(".tiktok-aiuhe9-DivModalContent")).await;
     if let Ok(_) = login {
@@ -41,7 +42,7 @@ use tokio::{self, time::sleep};
         d.switch_to_window(windows[1].clone()).await?;
         sleep(Duration::from_millis(1500)).await;
 
-        // If we already have our email in then click it else
+        // If we already have our email saved in then click it
         let prelog = d.find(By::Css(".tgnCOd")).await;
         if let Ok(element) = prelog {
             element.click().await?;
