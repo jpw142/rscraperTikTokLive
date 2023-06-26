@@ -84,6 +84,43 @@ put chromedriver in that same.exe fiel in order to launch it from cmd as well
         }
     }
     // By this point the page is loading and has been logged in successfully
+    
+    // Scan chat messages
+    let chat = d.query(By::Css(".tiktok-d3d5tr-DivChatMessageList")).first().await?;
+    // Clone it to make it a web element because I am LAZY
+    let mut last_message = chat.clone();
+
+    loop{
+        // Get all children of the chat window, which will be the chat messages
+        let mut chatmessages = chat.clone().find_all(By::Tag("div")).await?;
+        
+        'outer: for (i, message) in chatmessages.clone().iter_mut().enumerate() {
+            // If we find that a message in new scan is equal to old scan, delete all elements before that because they're old
+            if message == &last_message {
+                for _ in 0..=i {
+                    chatmessages.remove(0);
+                }
+                break 'outer;
+            }
+        }
+
+        // If there is no new chat messages then why would we print or do anything silly
+        if chatmessages.len() == 0 {
+            continue;
+        }
+
+        last_message = chatmessages[chatmessages.len() -1].clone();
+        for message in chatmessages {
+            if let Ok(Some(class_name)) = message.class_name().await {
+                // CHAT MESSAGE
+                if class_name == "tiktok-1orcc4m-DivChatMessage e11g2s305" {
+                    // If you are getting nonsense with messages not showing its' definitly because not handling these errors
+                    let userinfo = message.find(By::ClassName("tiktok-1ymr58b-SpanEllipsisName")).await?;
+                    let comment = message.find(By::ClassName("tiktok-1kue6t3-DivComment")).await?;
+                    println!("{}: {}", userinfo.inner_html().await?, comment.inner_html().await?);
+                }
+            }
+        }
+    }
     Ok(())
 }
-
