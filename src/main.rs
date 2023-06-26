@@ -43,7 +43,8 @@ put chromedriver in that same.exe fiel in order to launch it from cmd as well
     
     // Go to tik tok live page
     d.goto(url).await?;
-
+    
+    // Login
     // Checks if the login screen comes up
     let login = d.find(By::Css(".tiktok-aiuhe9-DivModalContent")).await;
     if let Ok(_) = login {
@@ -78,6 +79,7 @@ put chromedriver in that same.exe fiel in order to launch it from cmd as well
             // Go to next page
             let next2 = d.query(By::Css(".VfPpkd-LgbsSe-OWXEXe-k8QpJ > span:nth-child(4)")).first().await?;
             next2.click().await?;
+            // Life goes fast, just take a break and let things load for a second
             sleep(Duration::from_millis(5000)).await;
         }
     }
