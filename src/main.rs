@@ -2,6 +2,17 @@ use std::{time::Duration, fs::File};
 use thirtyfour::prelude::*;
 use tokio::{self, time::sleep};
 
+/*
+Note to future jack
+I did portforward 9222
+and json is structures as
+{
+    "email": "",
+    "password": "",
+    "account": ""
+}
+ */
+
 #[tokio::main]
     async fn main() -> WebDriverResult<()> {
     // STARTUP PROCESS:
@@ -21,7 +32,9 @@ use tokio::{self, time::sleep};
     
     // Attach webdriver to existing google account to avoid login shenanigans
     let mut caps = DesiredCapabilities::chrome();
+    // This localhost is the localhost you run chrome remote debugger on with the command
     caps.set_debugger_address("localhost:9222")?;
+    // This localhost is the port chromedriver spits out
     let d = WebDriver::new("http://localhost:9515", caps).await?;
     
     // Go to tik tok live page
@@ -62,9 +75,9 @@ use tokio::{self, time::sleep};
             let next2 = d.query(By::Css(".VfPpkd-LgbsSe-OWXEXe-k8QpJ > span:nth-child(4)")).first().await?;
             next2.click().await?;
             sleep(Duration::from_millis(5000)).await;
-            // By this point it's loading and logged in successfully
         }
     }
+    // By this point the page is loading and has been logged in successfully
     Ok(())
 }
 
