@@ -4,14 +4,18 @@ use tokio::{self, time::sleep};
 
 /*
 Note to future jack
-I did portforward 9222
-and json is structures as
+I did portforward 9222 inbound I don't know if that helped
+json is structures as:
 {
     "email": "",
     "password": "",
     "account": ""
 }
- */
+--remote-debugging-port= port you want to remote debug on (conventionally 9222)
+--user-data-dir="directory for a chrome profile, doesn't matter just needs a folder"
+in order to launch chrome directly from cmd add the chrome.exe dir to path in enviromental variables in advanced system preferences
+put chromedriver in that same.exe fiel in order to launch it from cmd as well
+*/
 
 #[tokio::main]
     async fn main() -> WebDriverResult<()> {
