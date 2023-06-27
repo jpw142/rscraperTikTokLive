@@ -6,16 +6,10 @@ use tokio::{self, time::sleep, task::{self},};
 
 /*
 Note to future jack
-json is structures as:
-{
-    "email": "",
-    "password": "",
-    "account": ""
-}
---remote-debugging-port= port you want to remote debug on (conventionally 9222)
---user-data-dir="directory for a chrome profile, doesn't matter just needs a folder"
-in order to launch chrome directly from cmd add the chrome.exe dir to path in enviromental variables in advanced system preferences
-put chromedriver in that same.exe fiel in order to launch it from cmd as well
+please fix your code
+
+Note from future jack
+no :)
 */
 enum EventType {
     Donation(String, u16),
@@ -45,7 +39,7 @@ struct Event {
     // Get the desired tik tok live chat link
     let url = format!("https://www.tiktok.com/{}/live",username);
     
-    // Attach webdriver to existing google account to avoid login shenanigans
+    // Attach webdriver to existing google chrome instance to avoid login shenanigans
     let mut caps = DesiredCapabilities::chrome();
     // This localhost is the localhost you run chrome remote debugger on with the command
     caps.set_debugger_address("localhost:9222")?;

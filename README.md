@@ -1,5 +1,12 @@
 # rscraper TikTokLive
-This is my tik tok live chat scraper built using a rust port of selenium (thirtyfour). If for some reason you find value in this detritis feel free to reach out, it's certainly my best work and I would love to help with selenium nonsense if I can. I was inspired by all the money-grubbing unofficial tiktok apis and thought, I can at least do better than that... I hope. If you do end up using this in any way I apologize for my atrocious code and hope it serves as a push of point for much better ventures.
+This is my tik tok live chat scraper built using a rust port of selenium (thirtyfour). If for some reason you find value in this detritis feel free to reach out, it's certainly my best work and I would love to help with selenium nonsense if I can. I was inspired by all the money-grubbing unofficial tiktok apis and thought, I can at least do better than that... I hope. If you do end up using this in any way I apologize for my atrocious code and hope it serves as a push of point for much better ventures.  
+
+All of the css and class name identifiers are probably completely changed by the time any sane person reviews and implements my methods, however if you too have lost your sanity to selenium and chromedriver then I would reccomend using firefox because I have empirically found that copying and pasting from there is way easier and more morally acceptable than copying from chrome. If you are as naive as I was I will impart a few tricks I've learned:  
+    If the element dissapears all bets are off weewooweewoo sound the alarms check for errors literally everywhere oh my god you forgot to check for errors there  
+    I find searching by classname is most reputable and kind out of all the find methods but make sure your class name doesn't have spaces because that always gave me trouble  
+    A query is like a super important find_all so I use those when I'm feeling like the stuff I'm typing is going to annoy me when it breaks
+    If it won't find the element you are looking for it's either cause it doesn't exist or you typed it in wrong, it's never the computers fault :\(
+    
 
 Requires sensitiveinfo.json formatted as such:  
 {  
