@@ -1,10 +1,11 @@
+#![allow(unreachable_code)]
+#![allow(dead_code)]
 use std::{time::Duration, fs::File};
 use thirtyfour::prelude::*;
-use tokio::{self, time::sleep};
+use tokio::{self, time::sleep, task::{self},};
 
 /*
 Note to future jack
-I did portforward 9222 inbound I don't know if that helped
 json is structures as:
 {
     "email": "",
@@ -16,13 +17,23 @@ json is structures as:
 in order to launch chrome directly from cmd add the chrome.exe dir to path in enviromental variables in advanced system preferences
 put chromedriver in that same.exe fiel in order to launch it from cmd as well
 */
+enum EventType {
+    Donation(String, u16),
+    Message(String),
+}
 
-#[tokio::main]
+struct Event {
+    user: String,
+    payload: EventType,
+}
+
+#[tokio::main(flavor = "multi_thread", worker_threads = 10)]
     async fn main() -> WebDriverResult<()> {
     // STARTUP PROCESS:
     // Open cmd prompt and in type these
     // chrome.exe --remote-debugging-port=9222 --user-data-dir="C:\Users\jackw\OneDrive\Desktop\Data"
     // chromedriver
+
 
     // Load google account info
     let file = File::open("sensitiveinfo.json").expect("JSON ERROR JSON ERROR WEEWOOWEEWOO");
@@ -85,42 +96,141 @@ put chromedriver in that same.exe fiel in order to launch it from cmd as well
     }
     // By this point the page is loading and has been logged in successfully
     
-    // Scan chat messages
+    // Attatch to all elements
     let chat = d.query(By::Css(".tiktok-d3d5tr-DivChatMessageList")).first().await?;
-    // Clone it to make it a web element because I am LAZY
+    println!("[-] Chat Attached");
+    let donationbar = d.query(By::ClassName("tiktok-wqpdxo-StyledGiftTray")).with_tag("div").first().await?;
+    println!("[-] DonationBar Attached");
+
+    // Get all dummy lasts
     let mut last_message = chat.clone();
 
-    loop{
-        // Get all children of the chat window, which will be the chat messages
-        let mut chatmessages = chat.clone().find_all(By::Tag("div")).await?;
+    // Chatter
+    println!("[-] Initializing Chatter");
+    let chatter = task::spawn(async move {
+        loop{
+            let mut chatmessages = chat.clone().find_all(By::ClassName("tiktok-1orcc4m-DivChatMessage")).await?;
         
-        'outer: for (i, message) in chatmessages.clone().iter_mut().enumerate() {
-            // If we find that a message in new scan is equal to old scan, delete all elements before that because they're old
-            if message == &last_message {
-                for _ in 0..=i {
-                    chatmessages.remove(0);
-                }
-                break 'outer;
-            }
-        }
-
-        // If there is no new chat messages then why would we print or do anything silly
-        if chatmessages.len() == 0 {
-            continue;
-        }
-
-        last_message = chatmessages[chatmessages.len() -1].clone();
-        for message in chatmessages {
-            if let Ok(Some(class_name)) = message.class_name().await {
-                // CHAT MESSAGE
-                if class_name == "tiktok-1orcc4m-DivChatMessage e11g2s305" {
-                    // If you are getting nonsense with messages not showing its' definitly because not handling these errors
-                    let userinfo = message.find(By::ClassName("tiktok-1ymr58b-SpanEllipsisName")).await?;
-                    let comment = message.find(By::ClassName("tiktok-1kue6t3-DivComment")).await?;
-                    println!("{}: {}", userinfo.inner_html().await?, comment.inner_html().await?);
+            // Delete all old info
+            'outer: for (i, message) in chatmessages.clone().iter_mut().enumerate() {
+                // If we find that a message in new scan is equal to old scan, delete all elements before that because they're old
+                if message == &last_message.clone() {
+                    for _ in 0..=i {
+                        chatmessages.remove(0);
+                    }
+                    break 'outer;
                 }
             }
+
+            // If there is no new chat messages then why would we print or do anything silly
+            if chatmessages.len() == 0 {
+                continue;
+            }
+
+            last_message = chatmessages[chatmessages.len() -1].clone();
+            for message in chatmessages {
+                // If you are getting nonsense with messages not showing its' definitly because not handling these errors
+                let userinfo = message.find(By::ClassName("tiktok-1ymr58b-SpanEllipsisName")).await?;
+                let comment = message.find(By::ClassName("tiktok-1kue6t3-DivComment")).await?;
+                println!("{}: {}", userinfo.inner_html().await?, comment.inner_html().await?);
+
+            }
         }
-    }
+        Ok::<(), WebDriverError>(())
+    });
+    println!("[-] Chatter Initialized");
+
+    println!("[-] Initializing Donater");
+    let mut multvec: Vec<String> = vec![];
+    let mut uservec: Vec<String> = vec![];
+    let mut donovec: Vec<String> = vec![];
+    let mut indexes_to_remove: Vec<usize> = vec![];
+    let donater = task::spawn(async move {
+        loop{
+            let donations = donationbar.clone().find_all(By::Css(".tiktok-w5o66o-DivSendGift")).await.expect("piip");
+
+            // If there is no donations then why would we print or do anything silly
+            if donations.len() == 0 {
+                continue;
+            }
+
+            for _ in 0..donations.len() {
+                if multvec.len() != donations.len() {
+                    multvec.push(0.to_string());
+                }
+                if uservec.len() != donations.len() {
+                    uservec.push(0.to_string());
+                }
+                if donovec.len() != donations.len() {
+                    donovec.push(0.to_string());
+                }
+            }
+
+            // I feel so stupid for using this but it works
+            let mut okay;
+            for (index, donation) in donations.iter().enumerate() {
+                okay = true;
+                // Finds the elements
+                let multiplier = donation.find(By::ClassName("tiktok-arje3t-SpanBullet")).await;
+                let userinfo = donation.find(By::ClassName("tiktok-1e2buzz-DivTitleGift")).await;
+                let donation = donation.find(By::ClassName("tiktok-nom0kn-DivDescriptionGift")).await;
+                // By this point the element may have dissapeared so we have to check that it exists
+                match multiplier {
+                    Ok(_) => (),
+                    Err(_) => {okay = false;}
+                }
+                match userinfo {
+                    Ok(_) => (),
+                    Err(_) => {okay = false;}
+                }
+                match donation {
+                    Ok(_) => (),
+                    Err(_) => {okay = false;}
+                }
+                if okay {
+                    // Get the inner vlaues from them
+                    let multiplier = multiplier?.inner_html().await;
+                    let userinfo = userinfo?.inner_html().await;
+                    let donation = donation?.inner_html().await;
+                    // By this point the element may have dissapeared so we have to check that it exists
+                    match multiplier {
+                        Ok(_) => (),
+                        Err(_) => {okay = false;}
+                    }
+                    match userinfo {
+                        Ok(_) => (),
+                        Err(_) => {okay = false;}
+                    }
+                    match donation {
+                        Ok(_) => (),
+                        Err(_) => {okay = false;}
+                    }
+                    if okay {
+                        multvec[index] = multiplier?;
+                        uservec[index] = userinfo?;
+                        donovec[index] = donation?;
+                    }
+                    
+                }
+                if !okay {
+                    println!("\n{}: {} {}\n", uservec[index], donovec[index], multvec[index]);
+                    indexes_to_remove.push(index.clone());
+                }                
+            }
+            for _ in 0..indexes_to_remove.len() {
+                if let Some(index) = indexes_to_remove.pop() {
+                    multvec.remove(index);
+                    uservec.remove(index);
+                    donovec.remove(index);
+                }
+            }
+        }
+        Ok::<(), WebDriverError>(())
+    });
+    println!("[-] Donater Initialized");
+    
+    println!("[-] Joining Handles");
+    println!("{:?}", chatter.await);
+    println!("{:?}", donater.await);
     Ok(())
 }
