@@ -9,7 +9,8 @@ Requires sensitiveinfo.json formatted as such:
 }  
 
 I use chrome remote debugging in order to log into tik tok without the bot warning for logging in  
-This works because of frankly a lot of nonsense but the jist of it is instead of creating a dirty automation tagged browser for your script, it starts a 'normal' clean and lovely browser and then takes control of it
+This works because of frankly a lot of nonsense but the jist of it is instead of creating a dirty automation tagged browser for your script, it starts a 'normal' clean and lovely browser and then takes control of it like a sacculina to a crab  
+
 Here are a few tips I've come across when it comes to the pain of chrome remote debugging:  
     --remote-debugging-port= port you want to have the web driver access chrome on (conventionally 9222)  
     --user-data-dir="directory for a new chrome profile, doesn't matter just needs a folder"  
