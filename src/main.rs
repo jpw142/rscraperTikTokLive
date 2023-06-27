@@ -141,9 +141,11 @@ struct Event {
     println!("[-] Chatter Initialized");
 
     println!("[-] Initializing Donater");
+    // Used to store the data from the element as it gets increased
     let mut multvec: Vec<String> = vec![];
     let mut uservec: Vec<String> = vec![];
     let mut donovec: Vec<String> = vec![];
+    // When the element dissapears and errors, adding it to this list will signify it's removal from the prior three lists
     let mut indexes_to_remove: Vec<usize> = vec![];
     let donater = task::spawn(async move {
         loop{
@@ -153,7 +155,7 @@ struct Event {
             if donations.len() == 0 {
                 continue;
             }
-
+            // Avoid any index errors, if somehow the lists are messed up just add 0's
             for _ in 0..donations.len() {
                 if multvec.len() != donations.len() {
                     multvec.push(0.to_string());
@@ -166,7 +168,7 @@ struct Event {
                 }
             }
 
-            // I feel so stupid for using this but it works
+            // I feel so stupid for using this but it works, there must be a better way
             let mut okay;
             for (index, donation) in donations.iter().enumerate() {
                 okay = true;
@@ -212,11 +214,13 @@ struct Event {
                     }
                     
                 }
+                // If it has finally errored that means it's dissapeared and reached its maximum true value, now we can print
                 if !okay {
                     println!("\n{}: {} {}\n", uservec[index], donovec[index], multvec[index]);
                     indexes_to_remove.push(index.clone());
                 }                
             }
+            // Gotta remove the detritis from our veins
             for _ in 0..indexes_to_remove.len() {
                 if let Some(index) = indexes_to_remove.pop() {
                     multvec.remove(index);
