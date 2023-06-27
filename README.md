@@ -18,13 +18,14 @@ Here are a few tips I've come across when it comes to the pain of chrome remote 
 Furthermore you will need an instance of chromedriver running (corresponding to your chome version) and ensure that the port its running on (will be spit out by chromedriver in terminal) is replaced in the code, localhost and all.
 
 Here is the feature plan and that will be all thank you for reading:
-\[-\] Chat Message Tracking\n
-\[-\] Donation Tracking\n
-\[ \] Following Tracking\n
-\[ \] Sharing Tracking\n
-\[ \] Joining Tracking\n
-\[ \] Better Interfaces\n
-\[ \] Database of coin values for each gift\n
-\[ \] Database of # of chat messages and donations and such for each person\n
-\[ \] Key Word Detection\n
-\[ \] Perhaps some sort of message bot \(if possible\)\n
+\[-\] Chat Message Tracking  
+\[-\] Donation Tracking  
+\[ \] Following Tracking  
+\[ \] Sharing Tracking  
+\[ \] Joining Tracking  
+\[ \] Better Interfaces  
+\[ \] Database of coin values for each gift  
+\[ \] Database of # of chat messages and donations and such for each person  
+\[ \] Key Word Detection\n  
+\[ \] Perhaps some sort of message bot \(if possible\)  
+
