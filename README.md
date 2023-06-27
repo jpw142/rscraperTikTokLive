@@ -21,8 +21,7 @@ This works because of frankly a lot of nonsense but the jist of it is instead of
 Here are a few tips I've come across when it comes to the pain of chrome remote debugging:  
     --remote-debugging-port= port you want to have the web driver access chrome on (conventionally 9222)  
     --user-data-dir="directory for a new chrome profile, doesn't matter just needs a folder"  
-    in order to launch chrome directly from cmd add the chrome.exe dir to system path in enviromental variables in advanced system  
-    preferences  
+    in order to launch chrome directly from cmd add the chrome.exe dir to system path in enviromental variables in advanced system preferences  
     put chromedriver in that same file in order to launch it from cmd as well  
     worst comes to worse just restart your computer and try try try again
     
