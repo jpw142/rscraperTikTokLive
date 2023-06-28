@@ -4,7 +4,7 @@ This is my tik tok live chat scraper built using a rust port of selenium (thirty
 All of the css and class name identifiers are probably completely changed by the time any sane person reviews and implements my methods, however if you too have lost your sanity to selenium and chromedriver then I would reccomend using firefox because I have empirically found that copying and pasting from there is way easier and more morally acceptable than copying from chrome. If you are as naive as I was I will impart a few tricks I've learned:  
     If the element dissapears all bets are off weewooweewoo sound the alarms check for errors literally everywhere oh my god you forgot to check for errors there  
     I find searching by classname is most reputable and kind out of all the find methods but make sure your class name doesn't have spaces because that always gave me trouble  
-    A query is like a super important find_all so I use those when I'm feeling like the stuff I'm typing is going to annoy me when it breaks
+    A query is like a super important find_all so I use those when I'm feeling like the stuff I'm typing is going to annoy me when it breaks  
     If it won't find the element you are looking for it's either cause it doesn't exist or you typed it in wrong, it's never the computers fault :\(
     
 
@@ -21,8 +21,7 @@ This works because of frankly a lot of nonsense but the jist of it is instead of
 Here are a few tips I've come across when it comes to the pain of chrome remote debugging:  
     --remote-debugging-port= port you want to have the web driver access chrome on (conventionally 9222)  
     --user-data-dir="directory for a new chrome profile, doesn't matter just needs a folder"  
-    in order to launch chrome directly from cmd add the chrome.exe dir to system path in enviromental variables in advanced system  
-    preferences  
+    in order to launch chrome directly from cmd add the chrome.exe dir to system path in enviromental variables in advanced system preferences  
     put chromedriver in that same file in order to launch it from cmd as well  
     worst comes to worse just restart your computer and try try try again
     
