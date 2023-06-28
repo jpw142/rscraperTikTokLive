@@ -14,6 +14,9 @@ no :)
 enum EventType {
     Donation(String, u16),
     Message(String),
+    Follow,
+    Shared,
+    Join,
 }
 
 struct Event {
@@ -21,14 +24,14 @@ struct Event {
     payload: EventType,
 }
 
+/* STARTUP PROCESS:
+Open cmd prompt and in type these
+chrome.exe --remote-debugging-port=9222 --user-data-dir="C:\Users\jackw\OneDrive\Desktop\Data"
+chromedriver
+*/
+
 #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
-    async fn main() -> WebDriverResult<()> {
-    // STARTUP PROCESS:
-    // Open cmd prompt and in type these
-    // chrome.exe --remote-debugging-port=9222 --user-data-dir="C:\Users\jackw\OneDrive\Desktop\Data"
-    // chromedriver
-
-
+async fn main() -> WebDriverResult<()> {
     // Load google account info
     let file = File::open("sensitiveinfo.json").expect("JSON ERROR JSON ERROR WEEWOOWEEWOO");
     let json: serde_json::Value = serde_json::from_reader(&file).expect("READER ERROR READER ERROR WEEWOOWEEWOO");
@@ -90,17 +93,20 @@ struct Event {
     }
     // By this point the page is loading and has been logged in successfully
     
-    // Attatch to all elements
+    // Attatch to all elements that would like to be tracked
     let chat = d.query(By::Css(".tiktok-d3d5tr-DivChatMessageList")).first().await?;
     println!("[-] Chat Attached");
     let donationbar = d.query(By::ClassName("tiktok-wqpdxo-StyledGiftTray")).with_tag("div").first().await?;
     println!("[-] DonationBar Attached");
-
-    // Get all dummy lasts
-    let mut last_message = chat.clone();
+    // let stickybar = d.query(By::ClassName("tiktok-1pwimsz-DivBottomStickyMessageContainer")).first().await?;
+    println!("[-] StickyBar Attached");
+    let chatbox = d.query(By::ClassName("tiktok-1k2t5bj-DivCommentContainer")).first().await?;
+    let messagebox = chatbox.query(By::ClassName("tiktok-ahx06z-DivEditor")).first().await?;
+    println!("[-] Chatbox Attached");
 
     // Chatter
     println!("[-] Initializing Chatter");
+    let mut last_message = chat.clone();
     let chatter = task::spawn(async move {
         loop{
             let mut chatmessages = chat.clone().find_all(By::ClassName("tiktok-1orcc4m-DivChatMessage")).await?;
@@ -134,6 +140,7 @@ struct Event {
     });
     println!("[-] Chatter Initialized");
 
+    // Donater
     println!("[-] Initializing Donater");
     // Used to store the data from the element as it gets increased
     let mut multvec: Vec<String> = vec![];
@@ -230,5 +237,13 @@ struct Event {
     println!("[-] Joining Handles");
     println!("{:?}", chatter.await);
     println!("{:?}", donater.await);
+    Ok(())
+}
+
+async fn sendmessage(message: &str, chatbox: WebElement, messagebox: WebElement) -> WebDriverResult<()> {
+    // Enter text
+    messagebox.send_keys(message).await?;
+    // Click send
+    chatbox.query(By::ClassName("tiktok-1dgtn4b-DivPostButton")).first().await?.click().await?;
     Ok(())
 }

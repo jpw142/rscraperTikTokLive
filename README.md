@@ -30,6 +30,7 @@ Furthermore you will need an instance of chromedriver running (corresponding to 
 
 Here is the feature plan and that will be all thank you for reading:  
 \[-\] Chat Message Tracking  
+\[-\] Chat Message Sending  
 \[-\] Donation Tracking  
 \[ \] Following Tracking  
 \[ \] Sharing Tracking  
