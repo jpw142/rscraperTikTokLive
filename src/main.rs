@@ -3,7 +3,8 @@
 use std::{time::Duration, fs::File};
 use thirtyfour::prelude::*;
 use tokio::{self, time::sleep, task::{self},};
-
+use std::process::Command;
+use thirtyfour::stringmatch::StringMatch;
 /*
 Note to future jack
 please fix your code
@@ -11,6 +12,7 @@ please fix your code
 Note from future jack
 no :)
 */
+#[derive(Debug, Clone, PartialEq)]
 enum EventType {
     Donation(String, u16),
     Message(String),
@@ -19,6 +21,7 @@ enum EventType {
     Join,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 struct Event {
     user: String,
     payload: EventType,
@@ -32,6 +35,27 @@ chromedriver
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() -> WebDriverResult<()> {
+
+    // Launch Chrome Remote debugging Instance
+    task::spawn(async {
+    let _ = Command::new("chrome.exe")
+        .arg("--remote-debugging-port=9222")
+        .arg(r#"--user-data-dir=C:\Users\jackw\OneDrive\Desktop\Data"#)
+        .output().unwrap();        
+    });
+
+    // Launch Chromedriver Instance
+    task::spawn(async {
+    let _ = Command::new("chromedriver")
+        .output().unwrap();        
+    });
+
+    
+    
+    // Launch chromedriver
+    //let _ = Command::new("chromedriver")
+    //    .output().unwrap();
+    sleep(Duration::from_millis(2000)).await;    
     // Load google account info
     let file = File::open("sensitiveinfo.json").expect("JSON ERROR JSON ERROR WEEWOOWEEWOO");
     let json: serde_json::Value = serde_json::from_reader(&file).expect("READER ERROR READER ERROR WEEWOOWEEWOO");
@@ -92,16 +116,28 @@ async fn main() -> WebDriverResult<()> {
         }
     }
     // By this point the page is loading and has been logged in successfully
-    
+    //
+    // Search for each elements class name
+
     // Attatch to all elements that would like to be tracked
-    let chat = d.query(By::Css(".tiktok-d3d5tr-DivChatMessageList")).first().await?;
+    let chatquery = d.query(By::Css("div[class*='DivChatMessageList']")).first().await;
+    if chatquery.is_err() {panic!("Chat failed to attach")}
+    let chat = chatquery?;
     println!("[-] Chat Attached");
-    let donationbar = d.query(By::ClassName("tiktok-wqpdxo-StyledGiftTray")).with_tag("div").first().await?;
+
+    let donationbarquery = d.query(By::Css("div[class*='StyledGiftTray']")).with_tag("div").first().await;
+    if donationbarquery.is_err() {panic!("Donation Bar failed to attach")}
+    let donationbar = donationbarquery?;
     println!("[-] DonationBar Attached");
-    // let stickybar = d.query(By::ClassName("tiktok-1pwimsz-DivBottomStickyMessageContainer")).first().await?;
+
+    let stickybarquery = d.query(By::Css("div[class*='DivBottomStickyMessageContainer']")).first().await;
+    if stickybarquery.is_err() {panic!("Sticky Bar failed to attatch")}
+    let stickybar = stickybarquery?;
     println!("[-] StickyBar Attached");
-    let chatbox = d.query(By::ClassName("tiktok-1k2t5bj-DivCommentContainer")).first().await?;
-    let messagebox = chatbox.query(By::ClassName("tiktok-ahx06z-DivEditor")).first().await?;
+
+    let chatbox = d.query(By::Css("div[class*='DivCommentContainer']")).first().await?;
+    let messageboxquery = chatbox.query(By::ClassName("tiktok-ahx06z-DivEditor")).first().await;
+    if messageboxquery.is_err() {panic!("Message Box failed to attatch")}
     println!("[-] Chatbox Attached");
 
     // Chatter
@@ -109,7 +145,7 @@ async fn main() -> WebDriverResult<()> {
     let mut last_message = chat.clone();
     let chatter = task::spawn(async move {
         loop{
-            let mut chatmessages = chat.clone().find_all(By::ClassName("tiktok-1orcc4m-DivChatMessage")).await?;
+            let mut chatmessages = chat.clone().find_all(By::Css("div[class*='DivChatMessage']")).await?;
         
             // Delete all old info
             'outer: for (i, message) in chatmessages.clone().iter_mut().enumerate() {
@@ -130,8 +166,8 @@ async fn main() -> WebDriverResult<()> {
             last_message = chatmessages[chatmessages.len() -1].clone();
             for message in chatmessages {
                 // If you are getting nonsense with messages not showing its' definitly because not handling these errors
-                let userinfo = message.find(By::ClassName("tiktok-1ymr58b-SpanEllipsisName")).await?;
-                let comment = message.find(By::ClassName("tiktok-1kue6t3-DivComment")).await?;
+                let userinfo = message.find(By::Css("span[class*='SpanEllipsisName']")).await?;
+                let comment = message.find(By::Css("div[class*='DivComment']")).await?;
                 println!("{}: {}", userinfo.inner_html().await?, comment.inner_html().await?);
 
             }
@@ -142,100 +178,58 @@ async fn main() -> WebDriverResult<()> {
 
     // Donater
     println!("[-] Initializing Donater");
-    // Used to store the data from the element as it gets increased
-    let mut multvec: Vec<String> = vec![];
-    let mut uservec: Vec<String> = vec![];
-    let mut donovec: Vec<String> = vec![];
-    // When the element dissapears and errors, adding it to this list will signify it's removal from the prior three lists
-    let mut indexes_to_remove: Vec<usize> = vec![];
+    let mut old_donations: Vec<Event> = vec![];
+    let mut event_donations: Vec<Event> = vec![];
     let donater = task::spawn(async move {
         loop{
-            let donations = donationbar.clone().find_all(By::Css(".tiktok-w5o66o-DivSendGift")).await.expect("piip");
+            let donations = donationbar.clone().find_all(By::Css("[class*='DivSendGift']")).await.expect("piip");
 
-            // If there is no donations then why would we print or do anything silly
-            if donations.len() == 0 {
-                continue;
-            }
-            // Avoid any index errors, if somehow the lists are messed up just add 0's
-            for _ in 0..donations.len() {
-                if multvec.len() != donations.len() {
-                    multvec.push(0.to_string());
-                }
-                if uservec.len() != donations.len() {
-                    uservec.push(0.to_string());
-                }
-                if donovec.len() != donations.len() {
-                    donovec.push(0.to_string());
+            for donation in donations {
+                let multiplier = donation.find(By::Css("[class*='SpanBullet']")).await;
+                let userinfo = donation.find(By::Css("[class*='DivTitleGift']")).await;
+                let donation = donation.find(By::Css("[class*='DivDescriptionGift']")).await;
+                if let (Ok(m), Ok(ui), Ok(d)) = (multiplier, userinfo, donation) {
+                    let mstring = m.inner_html().await?;
+                    let uistring = ui.inner_html().await?;
+                    let dstring = d.inner_html().await?;
+                    event_donations.push(Event{
+                        user: uistring,
+                        payload: EventType::Donation(dstring, mstring.parse().unwrap())
+                    });
                 }
             }
 
-            // I feel so stupid for using this but it works, there must be a better way
-            let mut okay;
-            for (index, donation) in donations.iter().enumerate() {
-                okay = true;
-                // Finds the elements
-                let multiplier = donation.find(By::ClassName("tiktok-arje3t-SpanBullet")).await;
-                let userinfo = donation.find(By::ClassName("tiktok-1e2buzz-DivTitleGift")).await;
-                let donation = donation.find(By::ClassName("tiktok-nom0kn-DivDescriptionGift")).await;
-                // By this point the element may have dissapeared so we have to check that it exists
-                match multiplier {
-                    Ok(_) => (),
-                    Err(_) => {okay = false;}
+            for old_donation in old_donations.clone() {
+                if event_donations.contains(&old_donation) {
+                    continue;
                 }
-                match userinfo {
-                    Ok(_) => (),
-                    Err(_) => {okay = false;}
+                let mut donation: String = String::new();
+                let mut multiplier: u16 = 0;
+                match old_donation.payload.clone() {
+                    EventType::Donation(d, m) => {
+                        donation = d;
+                        multiplier = m;
+                    }
+                    _ => {}
                 }
-                match donation {
-                    Ok(_) => (),
-                    Err(_) => {okay = false;}
+                if event_donations.contains(&Event{user: old_donation.user.clone(), payload: EventType::Donation(donation, multiplier + 1) }) {
+                    continue;
                 }
-                if okay {
-                    // Get the inner vlaues from them
-                    let multiplier = multiplier?.inner_html().await;
-                    let userinfo = userinfo?.inner_html().await;
-                    let donation = donation?.inner_html().await;
-                    // By this point the element may have dissapeared so we have to check that it exists
-                    match multiplier {
-                        Ok(_) => (),
-                        Err(_) => {okay = false;}
-                    }
-                    match userinfo {
-                        Ok(_) => (),
-                        Err(_) => {okay = false;}
-                    }
-                    match donation {
-                        Ok(_) => (),
-                        Err(_) => {okay = false;}
-                    }
-                    if okay {
-                        multvec[index] = multiplier?;
-                        uservec[index] = userinfo?;
-                        donovec[index] = donation?;
-                    }
-                    
-                }
-                // If it has finally errored that means it's dissapeared and reached its maximum true value, now we can print
-                if !okay {
-                    println!("\n{}: {} {}\n", uservec[index], donovec[index], multvec[index]);
-                    indexes_to_remove.push(index.clone());
-                }                
+                println!("");
+                println!("{:?}", old_donation.clone());
+                println!("");
             }
-            // Gotta remove the detritis from our veins
-            for _ in 0..indexes_to_remove.len() {
-                if let Some(index) = indexes_to_remove.pop() {
-                    multvec.remove(index);
-                    uservec.remove(index);
-                    donovec.remove(index);
-                }
-            }
+            
+            old_donations = event_donations.clone();
+            event_donations.clear();
+
         }
         Ok::<(), WebDriverError>(())
     });
     println!("[-] Donater Initialized");
     
     println!("[-] Joining Handles");
-    println!("{:?}", chatter.await);
+    // println!("{:?}", chatter.await);
     println!("{:?}", donater.await);
     Ok(())
 }
