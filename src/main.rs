@@ -2,9 +2,8 @@
 #![allow(dead_code)]
 use std::{time::Duration, fs::File};
 use thirtyfour::prelude::*;
-use tokio::{self, time::sleep, task::{self},};
+use tokio::{self, time::sleep, task::{self}, sync::mpsc};
 use std::process::Command;
-use thirtyfour::stringmatch::StringMatch;
 /*
 Note to future jack
 please fix your code
@@ -50,8 +49,6 @@ async fn main() -> WebDriverResult<()> {
         .output().unwrap();        
     });
 
-    
-    
     // Launch chromedriver
     //let _ = Command::new("chromedriver")
     //    .output().unwrap();
@@ -139,6 +136,11 @@ async fn main() -> WebDriverResult<()> {
     let messageboxquery = chatbox.query(By::ClassName("tiktok-ahx06z-DivEditor")).first().await;
     if messageboxquery.is_err() {panic!("Message Box failed to attatch")}
     println!("[-] Chatbox Attached");
+    
+    // Create Channel to send events
+    let (tx, mut rx) = mpsc::channel(256_usize);
+    let tx1 = tx.clone();
+    let tx2 = tx.clone();
 
     // Chatter
     println!("[-] Initializing Chatter");
@@ -166,10 +168,11 @@ async fn main() -> WebDriverResult<()> {
             last_message = chatmessages[chatmessages.len() -1].clone();
             for message in chatmessages {
                 // If you are getting nonsense with messages not showing its' definitly because not handling these errors
-                let userinfo = message.find(By::Css("span[class*='SpanEllipsisName']")).await?;
-                let comment = message.find(By::Css("div[class*='DivComment']")).await?;
-                println!("{}: {}", userinfo.inner_html().await?, comment.inner_html().await?);
-
+                let userinfo = message.find(By::Css("span[class*='SpanEllipsisName']")).await?.inner_html().await?;
+                let comment = message.find(By::Css("div[class*='DivComment']")).await?.inner_html().await?;
+                if let Err(_) = tx1.send(Event{user: userinfo, payload: EventType::Message(comment)}).await {
+                    panic!("Reciever Dropped");
+                }
             }
         }
         Ok::<(), WebDriverError>(())
@@ -182,42 +185,52 @@ async fn main() -> WebDriverResult<()> {
     let mut event_donations: Vec<Event> = vec![];
     let donater = task::spawn(async move {
         loop{
-            let donations = donationbar.clone().find_all(By::Css("[class*='DivSendGift']")).await.expect("piip");
+            let donations = donationbar.clone().find_all(By::Css("[class*='DivSendGift']")).await?;
 
             for donation in donations {
                 let multiplier = donation.find(By::Css("[class*='SpanBullet']")).await;
                 let userinfo = donation.find(By::Css("[class*='DivTitleGift']")).await;
                 let donation = donation.find(By::Css("[class*='DivDescriptionGift']")).await;
-                if let (Ok(m), Ok(ui), Ok(d)) = (multiplier, userinfo, donation) {
-                    let mstring = m.inner_html().await?;
-                    let uistring = ui.inner_html().await?;
-                    let dstring = d.inner_html().await?;
-                    event_donations.push(Event{
-                        user: uistring,
-                        payload: EventType::Donation(dstring, mstring.parse().unwrap())
-                    });
+                if let (Ok(multiplier), Ok(userinfo), Ok(donation)) = (multiplier, userinfo, donation) {
+                    let mstring = multiplier.inner_html().await;
+                    let uistring = userinfo.inner_html().await;
+                    let dstring = donation.inner_html().await;
+                    if let (Ok(mstring), Ok(uistring), Ok(dstring)) = (mstring, uistring, dstring) {
+                        event_donations.push(Event{
+                            user: uistring,
+                            payload: EventType::Donation(sanitize(dstring), mstring.parse().unwrap())
+                        });
+                    }
                 }
             }
 
-            for old_donation in old_donations.clone() {
-                if event_donations.contains(&old_donation) {
-                    continue;
-                }
-                let mut donation: String = String::new();
-                let mut multiplier: u16 = 0;
+            'outer: for old_donation in old_donations.clone() {
+                let mut odonation: String = String::new();
+                let mut omultiplier: u16 = 0;
                 match old_donation.payload.clone() {
                     EventType::Donation(d, m) => {
-                        donation = d;
-                        multiplier = m;
+                        odonation = d;
+                        omultiplier = m;
                     }
                     _ => {}
                 }
-                if event_donations.contains(&Event{user: old_donation.user.clone(), payload: EventType::Donation(donation, multiplier + 1) }) {
-                    continue;
+                for new_donation in event_donations.clone() {
+                    let mut ndonation: String = String::new();
+                    let mut nmultiplier: u16 = 0;
+                    match new_donation.payload.clone() {
+                        EventType::Donation(d, m) => {
+                            ndonation = d;
+                            nmultiplier = m;
+                        }
+                        _ => {}
+                    }
+                    if (ndonation == odonation) && (new_donation.user == old_donation.user) && (nmultiplier >= omultiplier) {
+                        continue 'outer;
+                    }
                 }
-                println!("");
-                println!("{:?}", old_donation.clone());
-                println!("");
+                if let Err(_) = tx.clone().send(old_donation).await {
+                    panic!("Reciever Dropped");
+                }
             }
             
             old_donations = event_donations.clone();
@@ -227,6 +240,10 @@ async fn main() -> WebDriverResult<()> {
         Ok::<(), WebDriverError>(())
     });
     println!("[-] Donater Initialized");
+
+    while let Some(i) = rx.recv().await {
+        println!("{:?}", i);
+    }
     
     println!("[-] Joining Handles");
     // println!("{:?}", chatter.await);
@@ -238,6 +255,14 @@ async fn sendmessage(message: &str, chatbox: WebElement, messagebox: WebElement)
     // Enter text
     messagebox.send_keys(message).await?;
     // Click send
-    chatbox.query(By::ClassName("tiktok-1dgtn4b-DivPostButton")).first().await?.click().await?;
+    chatbox.query(By::Css("[class*='DivPostButton']")).first().await?.click().await?;
     Ok(())
+}
+
+fn sanitize(donation: String) -> String {
+    let string = &donation[5..donation.len()]
+        .to_lowercase()
+        .replace("&nbsp;", " ");
+    return String::from(string);
+
 }
