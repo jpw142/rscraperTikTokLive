@@ -4,6 +4,7 @@ use std::{time::Duration, fs::File};
 use thirtyfour::prelude::*;
 use tokio::{self, time::sleep, task::{self}, sync::mpsc};
 use std::process::Command;
+use std::collections::HashMap;
 /*
 Note to future jack
 please fix your code
@@ -16,7 +17,7 @@ enum EventType {
     Donation(String, u16),
     Message(String),
     Follow,
-    Shared,
+    Share,
     Join,
 }
 
@@ -49,9 +50,6 @@ async fn main() -> WebDriverResult<()> {
         .output().unwrap();        
     });
 
-    // Launch chromedriver
-    //let _ = Command::new("chromedriver")
-    //    .output().unwrap();
     sleep(Duration::from_millis(2000)).await;    
     // Load google account info
     let file = File::open("sensitiveinfo.json").expect("JSON ERROR JSON ERROR WEEWOOWEEWOO");
@@ -59,6 +57,16 @@ async fn main() -> WebDriverResult<()> {
     let email = json["email"].as_str().unwrap();
     let password = json["password"].as_str().unwrap();
     let username = json["account"].as_str().unwrap();
+
+    // load gifts to coins conversion hashmap
+    let mut conversion_table: HashMap<String, u32>  = HashMap::new();
+    let mut reader = csv::Reader::from_path("giftstocoins.csv").unwrap();
+    for rec in reader.records(){
+        let rr = rec.unwrap();
+        let value1 = rr.get(0).unwrap();
+        let value2 = rr.get(1).unwrap();
+        conversion_table.insert(value1.into(), value2.parse().unwrap());
+    }
 
     // Get the desired tik tok live chat link
     let url = format!("https://www.tiktok.com/{}/live",username);
@@ -138,12 +146,11 @@ async fn main() -> WebDriverResult<()> {
     println!("[-] Chatbox Attached");
     
     // Create Channel to send events
-    let (tx, mut rx) = mpsc::channel(256_usize);
+    let (tx, mut rx) = mpsc::channel(256);
     let tx1 = tx.clone();
     let tx2 = tx.clone();
 
     // Chatter
-    println!("[-] Initializing Chatter");
     let mut last_message = chat.clone();
     let chatter = task::spawn(async move {
         loop{
@@ -177,10 +184,8 @@ async fn main() -> WebDriverResult<()> {
         }
         Ok::<(), WebDriverError>(())
     });
-    println!("[-] Chatter Initialized");
 
     // Donater
-    println!("[-] Initializing Donater");
     let mut old_donations: Vec<Event> = vec![];
     let mut event_donations: Vec<Event> = vec![];
     let donater = task::spawn(async move {
@@ -228,7 +233,7 @@ async fn main() -> WebDriverResult<()> {
                         continue 'outer;
                     }
                 }
-                if let Err(_) = tx.clone().send(old_donation).await {
+                if let Err(_) = tx2.send(old_donation).await {
                     panic!("Reciever Dropped");
                 }
             }
@@ -239,10 +244,15 @@ async fn main() -> WebDriverResult<()> {
         }
         Ok::<(), WebDriverError>(())
     });
-    println!("[-] Donater Initialized");
 
-    while let Some(i) = rx.recv().await {
-        println!("{:?}", i);
+    while let Some(event) = rx.recv().await {
+        match event.payload {
+            EventType::Follow => {}
+            EventType::Join => {}
+            EventType::Share => {}
+            EventType::Message(message) => {}
+            EventType::Donation(donation, multiplier) => {}
+        }
     }
     
     println!("[-] Joining Handles");
