@@ -184,6 +184,16 @@ async fn main() -> WebDriverResult<()> {
         }
         Ok::<(), WebDriverError>(())
     });
+    
+    // Scroll the chat down
+    let _ = task::spawn(async move {
+        loop {
+            sleep(Duration::from_millis(1000)).await;
+            if let Ok(button) = d.find(By::Css("[class*='DivUnreadTipsContent']")).await {
+                _ = button.click().await;
+            }
+        }
+    });
 
     // Donater
     let mut old_donations: Vec<Event> = vec![];
@@ -251,7 +261,7 @@ async fn main() -> WebDriverResult<()> {
             EventType::Join => {}
             EventType::Share => {}
             EventType::Message(message) => {}
-            EventType::Donation(donation, multiplier) => {}
+            EventType::Donation(donation, multiplier) => {println!("{:?}, {:?}, {:?}", donation, multiplier, conversion_table.get(&donation))}
         }
     }
     
